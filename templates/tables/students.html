@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Студенты</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры и поиск -->
+<div class="row mb-3">
+    <div class="col-md-8">
+        <input type="text" class="form-control" id="searchInput" placeholder="Поиск по имени, Telegram ID...">
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" id="statusFilter">
+            <option value="">Все статусы</option>
+            <option value="active">Активные</option>
+            <option value="inactive">Неактивные</option>
+        </select>
+    </div>
+</div>
+
+<!-- Таблица студентов -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Telegram ID</th>
+                        <th>Имя пользователя</th>
+                        <th>Имя</th>
+                        <th>Фамилия</th>
+                        <th>Группа</th>
+                        <th>Темы</th>
+                        <th>Статус</th>
+                        <th>Дата регистрации</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.id }}</td>
+                        <td>{{ student.tgid }}</td>
+                        <td>@{{ student.username if student.username else '-' }}</td>
+                        <td>{{ student.first_name if student.first_name else '-' }}</td>
+                        <td>{{ student.last_name if student.last_name else '-' }}</td>
+                        <td>{{ student.level }}</td>
+                        <td>{{ student.topics_count }}</td>
+                        <td>
+                            {% if student.is_active %}
+                            <span class="badge bg-success">Активен</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Неактивен</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if student.created_at %}
+                                {{ student.created_at|format_datetime }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary view-btn" data-id="{{ student.id }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center">Нет данных о студентах</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Пагинация -->
+        {% if pagination.total_pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if pagination.page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="/students?page={{ pagination.page - 1 }}">Назад</a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, pagination.total_pages + 1) %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="/students?page={{ p }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                {% if pagination.page < pagination.total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="/students?page={{ pagination.page + 1 }}">Вперед</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно просмотра студента -->
+<div class="modal fade" id="viewStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Просмотр студента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="studentDetails">
+                <!-- Детали будут загружены через AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Поиск
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Фильтр по статусу
+    document.getElementById('statusFilter').addEventListener('change', function(e) {
+        const filter = e.target.value;
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const statusBadge = row.querySelector('.badge');
+            const statusText = statusBadge ? statusBadge.textContent.trim() : '';
+
+            if (!filter) {
+                row.style.display = '';
+                return;
+            }
+
+            if (filter === 'active' && statusText === 'Активен') {
+                row.style.display = '';
+            } else if (filter === 'inactive' && statusText === 'Неактивен') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Кнопка обновления
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        window.location.reload();
+    });
+
+    // Просмотр студента
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const studentId = this.dataset.id;
+            fetch(`/api/students/${studentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const student = data.data;
+                        document.getElementById('studentDetails').innerHTML = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Telegram ID:</strong> ${student.tgid}</p>
+                                    <p><strong>Имя пользователя:</strong> @${student.username || '-'}</p>
+                                    <p><strong>Имя:</strong> ${student.first_name || '-'}</p>
+                                    <p><strong>Фамилия:</strong> ${student.last_name || '-'}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Уровень:</strong> ${student.level}</p>
+                                    <p><strong>Темы изучено:</strong> ${student.topics_count || 0}</p>
+                                    <p><strong>Статус:</strong> ${student.is_active ? 'Активен' : 'Неактивен'}</p>
+                                    <p><strong>Дата регистрации:</strong> ${student.created_at ? new Date(student.created_at).toLocaleString() : '-'}</p>
+                                </div>
+                            </div>
+                            ${student.bio ? `<p><strong>О себе:</strong><br>${student.bio}</p>` : ''}
+                        `;
+                        new bootstrap.Modal(document.getElementById('viewStudentModal')).show();
+                    }
+                });
+        });
+    });
+});
+</script>
+{% endblock %}

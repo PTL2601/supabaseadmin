@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Сессии обучения</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <select class="form-select" id="modeFilter">
+            <option value="">Все режимы</option>
+            <option value="test">Тест</option>
+            <option value="practice">Практика</option>
+            <option value="learning">Обучение</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" id="statusFilter">
+            <option value="">Все статусы</option>
+            <option value="active">Активные</option>
+            <option value="completed">Завершенные</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <input type="text" class="form-control" id="searchInput" placeholder="Поиск по Telegram ID...">
+    </div>
+</div>
+
+<!-- Таблица сессий -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Telegram ID</th>
+                        <th>Режим</th>
+                        <th>Тема</th>
+                        <th>Вопрос</th>
+                        <th>Ответ</th>
+                        <th>Оценка</th>
+                        <th>Дата создания</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                    <tr>
+                        <td>{{ session.id[:8] }}...</td>
+                        <td>{{ session.tgid }}</td>
+                        <td>
+                            {% if session.mode == 'test' %}
+                            <span class="badge bg-danger">Тест</span>
+                            {% elif session.mode == 'practice' %}
+                            <span class="badge bg-warning">Практика</span>
+                            {% else %}
+                            <span class="badge bg-info">Обучение</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ session.topicid }}</td>
+                        <td>{{ session.current_question|truncate(30) if session.current_question else '-' }}</td>
+                        <td>{{ session.current_answer|truncate(30) if session.current_answer else '-' }}</td>
+                        <td>
+    {% if session.get('score') is not none %}
+    <span class="badge {% if session.score >= 80 %}bg-success
+                    {% elif session.score >= 60 %}bg-warning
+                    {% else %}bg-danger{% endif %}">
+        {{ session.score }}%
+    </span>
+    {% else %}
+    -
+    {% endif %}
+</td>
+                        <td>
+                            {% if session.created_at %}
+                                {{ session.created_at|format_datetime }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.is_active %}
+                            <span class="badge bg-success">Активна</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Завершена</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">Нет данных о сессиях</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Пагинация -->
+        {% if pagination.total_pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if pagination.page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="/sessions?page={{ pagination.page - 1 }}">Назад</a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, pagination.total_pages + 1) %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="/sessions?page={{ p }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                {% if pagination.page < pagination.total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="/sessions?page={{ pagination.page + 1 }}">Вперед</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Поиск
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const tgid = row.cells[1]?.textContent.toLowerCase() || '';
+            row.style.display = tgid.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Фильтр по режиму
+    document.getElementById('modeFilter').addEventListener('change', function(e) {
+        const filter = e.target.value;
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const modeBadge = row.querySelector('.badge');
+            const modeText = modeBadge ? modeBadge.textContent.trim() : '';
+
+            if (!filter) {
+                row.style.display = '';
+                return;
+            }
+
+            const modeMap = {
+                'test': 'Тест',
+                'practice': 'Практика',
+                'learning': 'Обучение'
+            };
+
+            row.style.display = (modeText === modeMap[filter]) ? '' : 'none';
+        });
+    });
+
+    // Фильтр по статусу
+    document.getElementById('statusFilter').addEventListener('change', function(e) {
+        const filter = e.target.value;
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const statusCell = row.cells[8]; // Статус в 9-й ячейке
+            const statusText = statusCell ? statusCell.textContent.trim() : '';
+
+            if (!filter) {
+                row.style.display = '';
+                return;
+            }
+
+            if (filter === 'active' && statusText === 'Активна') {
+                row.style.display = '';
+            } else if (filter === 'completed' && statusText === 'Завершена') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Кнопка обновления
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        window.location.reload();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Прогресс студентов</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<!-- Статистика прогресса -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="card-title">Средний прогресс</h6>
+                <h2 class="text-primary">
+                    {{ progress.average_progress|default(0)|round(1) }}%
+                </h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="card-title">Активно обучается</h6>
+                <h2 class="text-success">{{ progress.active_students|default(0) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="card-title">Завершили курсы</h6>
+                <h2 class="text-info">{{ progress.completed_students|default(0) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="card-title">Новые студенты</h6>
+                <h2 class="text-warning">{{ progress.new_students|default(0) }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Таблица прогресса -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Студент</th>
+                        <th>Telegram ID</th>
+                        <th>Темы изучено</th>
+                        <th>Всего тем</th>
+                        <th>Прогресс</th>
+                        <th>Средний балл</th>
+                        <th>Последняя активность</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if progress.students %}
+                        {% for student in progress.students %}
+                        <tr>
+                            <td>
+                                {% if student.first_name or student.last_name %}
+                                    {{ student.first_name }} {{ student.last_name }}
+                                {% else %}
+                                    @{{ student.username|default('Unknown') }}
+                                {% endif %}
+                            </td>
+                            <td>{{ student.tgid }}</td>
+                            <td>{{ student.completed_topics|default(0) }}</td>
+                            <td>{{ student.total_topics|default(0) }}</td>
+                            <td>
+                                {% set progress_percent = (student.completed_topics|default(0) / student.total_topics|default(1) * 100)|round %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar
+                                        {% if progress_percent >= 80 %}bg-success
+                                        {% elif progress_percent >= 50 %}bg-warning
+                                        {% else %}bg-danger{% endif %}"
+                                        role="progressbar"
+                                        style="width: {{ progress_percent }}%">
+                                        {{ progress_percent }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if student.average_score %}
+                                    <span class="badge {% if student.average_score >= 80 %}bg-success
+                                                    {% elif student.average_score >= 60 %}bg-warning
+                                                    {% else %}bg-danger{% endif %}">
+                                        {{ student.average_score|round(1) }}%
+                                    </span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.last_activity %}
+                                    {{ student.last_activity|format_datetime }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.is_active %}
+                                <span class="badge bg-success">Активен</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Неактивен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center">Нет данных о прогрессе</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Кнопка обновления
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        window.location.reload();
+    });
+});
+</script>
+{% endblock %}

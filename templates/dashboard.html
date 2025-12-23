@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Панель управления</h1>
+</div>
+
+<div class="row">
+    <!-- Статистика -->
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-users me-2"></i>Студенты</h5>
+                <h2 class="card-text">{{ stats.total_students }}</h2>
+                <p class="card-text">Активных: {{ stats.active_students }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-book me-2"></i>Темы</h5>
+                <h2 class="card-text">{{ stats.total_topics }}</h2>
+                <p class="card-text">Доступно для изучения</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-comments me-2"></i>Сессии</h5>
+                <h2 class="card-text">{{ stats.active_sessions }}</h2>
+                <p class="card-text">Активных диалогов</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Прогресс</h5>
+                <h2 class="card-text">87%</h2>
+                <p class="card-text">Средняя успеваемость</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Последние сессии -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Последние сессии</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_sessions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Telegram ID</th>
+                                <th>Режим</th>
+                                <th>Тема</th>
+                                <th>Вопросы</th>
+                                <th>Дата создания</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in stats.recent_sessions %}
+                            <tr>
+                                <td>{{ session.id[:8] }}...</td>
+                                <td>{{ session.tgid }}</td>
+                                <td>
+                                    {% if session.mode == 'test' %}
+                                    <span class="badge bg-danger">Тест</span>
+                                    {% elif session.mode == 'practice' %}
+                                    <span class="badge bg-warning">Практика</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Обучение</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.topicid }}</td>
+                                <td>{{ session.current_index }}/{{ session.total }}</td>
+                                <td>
+                                    {% if session.created_at %}
+                                        {{ session.created_at|format_datetime }}
+                                    {% else %}
+                                        Не указана
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Нет данных о сессиях</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
